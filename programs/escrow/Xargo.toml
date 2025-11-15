@@ -1,0 +1,15 @@
+[package]
+name = "escrow"
+version = "0.1.0"
+authors = ["Your Name <you@example.com>"]
+edition = "2018"
+
+[dependencies]
+anchor-lang = "0.24.2"
+solana-program = "1.10.32"
+
+[profile.dev]
+opt-level = 2
+
+[profile.release]
+opt-level = 3

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "lib": ["es2015", "dom"],
+    "jsx": "react",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "types": ["mocha", "chai", "node"]
+  },
+  "include": ["tests/**/*", "app/src/**/*"],
+  "exclude": ["node_modules", "dist", "target"]
+}
