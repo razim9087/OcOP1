@@ -143,7 +143,8 @@ export type Escrow = {
         "Initialize a new options contract with margin accounts",
         "option_type: 0 for Call, 1 for Put",
         "strike: The strike price in lamports (ratio of asset price to SOL price)",
-        "is_test: true for test contracts (allows past dates), false for production"
+        "is_test: true for test contracts (allows past dates), false for production",
+        "allow_zero_margin: true to allow zero margin for testing"
       ],
       "discriminator": [
         33,
@@ -220,6 +221,10 @@ export type Escrow = {
         },
         {
           "name": "isTest",
+          "type": "bool"
+        },
+        {
+          "name": "allowZeroMargin",
           "type": "bool"
         }
       ]
@@ -459,6 +464,10 @@ export type Escrow = {
           },
           {
             "name": "isTest",
+            "type": "bool"
+          },
+          {
+            "name": "allowZeroMargin",
             "type": "bool"
           },
           {

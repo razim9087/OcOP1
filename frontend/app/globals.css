@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
-  --foreground: #ffffff;
+  --background: #0a0e27;
+  --foreground: #f8fafc;
 }
 
 @theme inline {
@@ -12,8 +12,197 @@
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1447 25%, #2d1b69 50%, #1a1447 75%, #0a0e27 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  font-family: 'Exo 2', system-ui, -apple-system, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Enhanced text contrast */
+h1, h2, h3, h4, h5, h6 {
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+p, span, div {
+  color: #e2e8f0;
+}
+
+/* Specific color overrides for better contrast */
+.text-gray-400 {
+  color: #cbd5e1 !important;
+}
+
+.text-gray-300 {
+  color: #e2e8f0 !important;
+}
+
+.text-white {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Financial Markets Background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background-image: 
+    /* Vibrant overlay */
+    radial-gradient(circle at 20% 30%, rgba(147, 51, 234, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.25) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(219, 39, 119, 0.2) 0%, transparent 60%),
+    /* Stock market imagery using CSS patterns */
+    url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 180 L40 150 L60 160 L80 130 L100 140 L120 100 L140 120 L160 80 L180 90' stroke='%239333ea' stroke-width='2' fill='none' opacity='0.2'/%3E%3Cpath d='M20 160 L40 140 L60 155 L80 120 L100 135 L120 95 L140 110 L160 75 L180 85' stroke='%23db2777' stroke-width='2' fill='none' opacity='0.15'/%3E%3Cpath d='M20 170 L40 145 L60 157 L80 125 L100 137 L120 98 L140 115 L160 78 L180 87' stroke='%2310b981' stroke-width='2' fill='none' opacity='0.1'/%3E%3Crect x='25' y='120' width='4' height='30' fill='%2310b981' opacity='0.2'/%3E%3Crect x='45' y='140' width='4' height='20' fill='%23ef4444' opacity='0.2'/%3E%3Crect x='65' y='130' width='4' height='35' fill='%2310b981' opacity='0.2'/%3E%3Crect x='85' y='115' width='4' height='25' fill='%23ef4444' opacity='0.2'/%3E%3Crect x='105' y='125' width='4' height='30' fill='%2310b981' opacity='0.2'/%3E%3Crect x='125' y='90' width='4' height='40' fill='%2310b981' opacity='0.2'/%3E%3Crect x='145' y='110' width='4' height='25' fill='%23ef4444' opacity='0.2'/%3E%3Crect x='165' y='70' width='4' height='35' fill='%2310b981' opacity='0.2'/%3E%3C/svg%3E"),
+    /* Grid pattern */
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 50px,
+      rgba(147, 51, 234, 0.05) 50px,
+      rgba(147, 51, 234, 0.05) 51px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 40px,
+      rgba(147, 51, 234, 0.05) 40px,
+      rgba(147, 51, 234, 0.05) 41px
+    );
+  background-color: transparent;
+  background-size: auto, 400px 400px, 100% 100%, 100% 100%;
+  background-position: center, center, 0 0, 0 0;
+  opacity: 1;
+  animation: pulseGlow 8s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+/* Footer ribbon - placeholder removed, using React component */
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker-scroll {
+  animation: ticker-scroll 60s linear infinite;
+}
+
+/* Chart grid overlay */
+.page-container {
+  position: relative;
+}
+
+.page-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 100px,
+      rgba(147, 51, 234, 0.08) 100px,
+      rgba(147, 51, 234, 0.08) 101px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 100px,
+      rgba(147, 51, 234, 0.08) 100px,
+      rgba(147, 51, 234, 0.08) 101px
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Floating candlestick elements */
+@keyframes floatCandlestick {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.1;
+  }
+  50% {
+    transform: translateY(-20px) translateX(10px);
+    opacity: 0.2;
+  }
+}
+
+.page-container::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(147, 51, 234, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(219, 39, 119, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(147, 51, 234, 0.1) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+  animation: floatCandlestick 20s ease-in-out infinite;
+}
+
+/* Chart line animation */
+@keyframes chartLine {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Add depth with layers */
+main {
+  background: linear-gradient(135deg, rgba(10, 14, 39, 0.85) 0%, rgba(26, 20, 71, 0.8) 50%, rgba(10, 14, 39, 0.85) 100%);
+  backdrop-filter: blur(15px);
+  border-radius: 1rem;
+  box-shadow: 
+    0 0 60px rgba(147, 51, 234, 0.3),
+    0 0 120px rgba(59, 130, 246, 0.2),
+    inset 0 0 40px rgba(219, 39, 119, 0.1);
+  border: 1px solid rgba(147, 51, 234, 0.4);
+}
+
+/* Text on cards and containers */
+main * {
+  color: inherit;
+}
+
+main h1, main h2, main h3, main h4, main h5, main h6 {
+  color: #ffffff;
+}
+
+main p, main span, main div {
+  color: #e2e8f0;
 }
 
 /* Solana Wallet Adapter Custom Styles */
@@ -71,4 +260,57 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(to bottom, #7e22ce, #be185d);
+}
+
+/* Page-Specific Stock Market Backgrounds */
+
+/* Main container for all pages */
+main::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(147, 51, 234, 0.4) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.35) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.25) 0%, transparent 50%),
+    url("data:image/svg+xml,%3Csvg width='400' height='300' xmlns='http://www.w3.org/2000/svg'%3E%3Cg opacity='0.4'%3E%3Crect x='20' y='150' width='15' height='100' fill='%2310b981'/%3E%3Crect x='50' y='130' width='15' height='120' fill='%23ef4444'/%3E%3Crect x='80' y='170' width='15' height='80' fill='%2310b981'/%3E%3Crect x='110' y='110' width='15' height='140' fill='%2310b981'/%3E%3Crect x='140' y='140' width='15' height='110' fill='%23ef4444'/%3E%3Crect x='170' y='90' width='15' height='160' fill='%2310b981'/%3E%3Crect x='200' y='120' width='15' height='130' fill='%2310b981'/%3E%3Crect x='230' y='100' width='15' height='150' fill='%23ef4444'/%3E%3Crect x='260' y='80' width='15' height='170' fill='%2310b981'/%3E%3Crect x='290' y='70' width='15' height='180' fill='%2310b981'/%3E%3Crect x='320' y='95' width='15' height='155' fill='%23ef4444'/%3E%3Crect x='350' y='60' width='15' height='190' fill='%2310b981'/%3E%3C/g%3E%3Cpath d='M20 250 L50 220 L80 230 L110 190 L140 200 L170 160 L200 170 L230 130 L260 140 L290 100 L320 110 L350 80 L380 90' stroke='%239333ea' stroke-width='3' fill='none' opacity='0.3'/%3E%3C/svg%3E");
+  background-size: auto, auto, auto, 500px 400px;
+  background-position: center;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+  pointer-events: none;
+  animation: floatBackground 20s ease-in-out infinite;
+}
+
+@keyframes floatBackground {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Create Contract Page - Bull Market Theme */
+.create-page-bg {
+  display: none;
+}
+
+/* Markets Page - Trading Floor Theme */
+.markets-page-bg {
+  display: none;
+}
+
+/* Portfolio Page - Performance Chart Theme */
+.portfolio-page-bg {
+  display: none;
+}
+
+/* Transactions Page - Ticker Tape Theme */
+.transactions-page-bg {
+  display: none;
+}
+
+/* Contract Detail Page - Candlestick Chart Theme */
+.contract-page-bg {
+  display: none;
 }

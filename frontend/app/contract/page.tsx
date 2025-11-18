@@ -1,9 +1,34 @@
 'use client';
 
 import { Connection, PublicKey } from '@solana/web3.js';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Program, AnchorProvider, web3 } from '@coral-xyz/anchor';
+
+// Copyable address component
+function CopyableAddress({ address, label }: { address: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      {label && <span>{label}</span>}
+      <span className="font-mono text-gray-300">{address.slice(0, 8)}...</span>
+      <button
+        onClick={handleCopy}
+        className="text-xs px-1.5 py-0.5 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+        title={`Copy full address: ${address}`}
+      >
+        {copied ? '✓' : '📋'}
+      </button>
+    </span>
+  );
+}
 
 interface ContractDetails {
   address: string;
@@ -40,6 +65,37 @@ interface SettlementHistory {
   settler: string;
 }
 
+// Example contract data from test_data/contract_history.json
+const EXAMPLE_CONTRACT_DATA = {
+  "address": "53NKEBZLkFpB7dBRtHi54FQkAdMKT8uLGCumEPseffTQ",
+  "programId": "FX3EgWWVrVCzgtntijpgfCT22C7HXpq6Py9DrYmDjR3E",
+  "type": "Call Option",
+  "underlying": "AAPL/SOL",
+  "strike": 1.5,
+  "premium": 2.0,
+  "margin": 1.0,
+  "seller": "5MDTbGuR...",
+  "initiationDate": "2025-08-01T00:00:00.000Z",
+  "expiryDate": "2025-08-31T00:00:00.000Z",
+  "status": "expired",
+  "transactions": [
+    { slot: 302, type: "initialization", timestamp: "2025-08-01T00:00:00.000Z", signature: "init_sig_302" },
+    { slot: 303, type: "purchase", timestamp: "2025-08-01T01:00:00.000Z", signature: "purchase_sig_303", buyer: "GXvnDHZ3...", price: 2.0 },
+    { slot: 304, type: "settlement", timestamp: "2025-08-05T00:00:00.000Z", signature: "settlement_sig_304", day: 4, ratio: 1.5, buyerMargin: 1.0, sellerMargin: 1.0 },
+    { slot: 305, type: "settlement", timestamp: "2025-08-10T00:00:00.000Z", signature: "settlement_sig_305", day: 9, ratio: 1.508, buyerMargin: 1.008445945, sellerMargin: 0.991554055 },
+    { slot: 306, type: "settlement", timestamp: "2025-08-15T00:00:00.000Z", signature: "settlement_sig_306", day: 14, ratio: 1.487, buyerMargin: 0.987096774, sellerMargin: 1.012903226 },
+    { slot: 307, type: "resell", timestamp: "2025-08-18T00:00:00.000Z", signature: "resell_sig_307", seller: "GXvnDHZ3...", buyer: "Cz8WtKjn...", price: 2.5, profit: 0.5 },
+    { slot: 310, type: "settlement", timestamp: "2025-08-20T00:00:00.000Z", signature: "settlement_sig_310", day: 19, ratio: 1.497, buyerMargin: 0.996774193, sellerMargin: 1.003225807 },
+    { slot: 311, type: "resell", timestamp: "2025-08-22T00:00:00.000Z", signature: "resell_sig_311", seller: "Cz8WtKjn...", buyer: "G2eX9ZrE...", price: 3.0, profit: 0.5 },
+    { slot: 314, type: "settlement", timestamp: "2025-08-24T00:00:00.000Z", signature: "settlement_sig_314", day: 23, ratio: 1.491, buyerMargin: 0.990506329, sellerMargin: 1.009493671 },
+    { slot: 315, type: "resell", timestamp: "2025-08-26T00:00:00.000Z", signature: "resell_sig_315", seller: "G2eX9ZrE...", buyer: "CnmedVct...", price: 2.8, profit: -0.2 },
+    { slot: 318, type: "settlement", timestamp: "2025-08-28T00:00:00.000Z", signature: "settlement_sig_318", day: 27, ratio: 1.488, buyerMargin: 0.9875, sellerMargin: 1.0125 },
+    { slot: 319, type: "resell", timestamp: "2025-08-29T00:00:00.000Z", signature: "resell_sig_319", seller: "CnmedVct...", buyer: "DK1kvyYg...", price: 3.5, profit: 0.7 },
+    { slot: 322, type: "settlement", timestamp: "2025-08-31T00:00:00.000Z", signature: "settlement_sig_322", day: 30, ratio: 1.455, buyerMargin: 0.954545454, sellerMargin: 1.045454546 },
+    { slot: 323, type: "exercise", timestamp: "2025-08-31T23:59:59.000Z", signature: "exercise_sig_323", finalOwner: "DK1kvyYg...", status: "IN THE MONEY" }
+  ]
+};
+
 export default function ContractHistoryPage() {
   const searchParams = useSearchParams();
   const [contractAddress, setContractAddress] = useState('');
@@ -49,6 +105,59 @@ export default function ContractHistoryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [rpcEndpoint, setRpcEndpoint] = useState('http://localhost:8899');
+  const [showingExample, setShowingExample] = useState(false);
+
+  // Don't load example data on mount - let user choose
+  useEffect(() => {
+    // Empty - user must click Example button to load data
+  }, []);
+
+  const loadExampleData = () => {
+    // Convert example data to component state format
+    const exampleContract: ContractDetails = {
+      address: EXAMPLE_CONTRACT_DATA.address,
+      optionType: 'Call',
+      underlying: EXAMPLE_CONTRACT_DATA.underlying,
+      seller: EXAMPLE_CONTRACT_DATA.seller,
+      owner: 'DK1kvyYg...', // Final owner
+      strike: EXAMPLE_CONTRACT_DATA.strike * 1e9,
+      price: EXAMPLE_CONTRACT_DATA.premium * 1e9,
+      initiationDate: new Date(EXAMPLE_CONTRACT_DATA.initiationDate).getTime() / 1000,
+      expiryDate: new Date(EXAMPLE_CONTRACT_DATA.expiryDate).getTime() / 1000,
+      status: 'Expired',
+      buyerMargin: 0.954545454,
+      sellerMargin: 1.045454546,
+      lastSettlementPrice: 1.455 * 1e9,
+      lastSettlementDate: new Date('2025-08-31T00:00:00.000Z').getTime() / 1000,
+      isTest: true,
+    };
+
+    const owners: OwnershipHistory[] = EXAMPLE_CONTRACT_DATA.transactions
+      .filter((tx: any) => tx.type === 'purchase' || tx.type === 'resell')
+      .map((tx: any, idx: number) => ({
+        owner: tx.buyer || 'Unknown',
+        acquiredAt: new Date(tx.timestamp).getTime() / 1000,
+        acquiredSlot: tx.slot,
+        transactionType: tx.type === 'purchase' ? 'Purchase' : 'Resell',
+        price: tx.price ? tx.price * 1e9 : undefined,
+      }));
+
+    const settlements: SettlementHistory[] = EXAMPLE_CONTRACT_DATA.transactions
+      .filter((tx: any) => tx.type === 'settlement')
+      .map((tx: any) => ({
+        date: new Date(tx.timestamp).getTime() / 1000,
+        slot: tx.slot,
+        price: tx.ratio * 1e9,
+        buyerMargin: tx.buyerMargin,
+        sellerMargin: tx.sellerMargin,
+        settler: 'System',
+      }));
+
+    setContract(exampleContract);
+    setOwnershipHistory(owners);
+    setSettlementHistory(settlements);
+    setShowingExample(true);
+  };
 
   const fetchContractHistory = async () => {
     if (!contractAddress) {
@@ -61,6 +170,7 @@ export default function ContractHistoryPage() {
     setContract(null);
     setOwnershipHistory([]);
     setSettlementHistory([]);
+    setShowingExample(false);
 
     try {
       const connection = new Connection(rpcEndpoint, 'confirmed');
@@ -322,9 +432,18 @@ export default function ContractHistoryPage() {
           <button
             onClick={fetchContractHistory}
             disabled={loading}
-            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {loading ? 'Loading...' : 'Search'}
+          </button>
+          <button
+            onClick={loadExampleData}
+            className="px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap text-black"
+            style={{ backgroundColor: '#20B2AA' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1a9a93'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#20B2AA'}
+          >
+            📋 Example
           </button>
         </div>
 
@@ -333,7 +452,190 @@ export default function ContractHistoryPage() {
             ❌ {error}
           </div>
         )}
+
+        {showingExample && contract && (
+          <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/50 rounded-lg">
+            <p className="text-blue-200 text-sm">
+              <strong>📋 Showing Example Contract History</strong><br />
+              This is demonstration data from <code className="bg-blue-900/30 px-2 py-1 rounded">test_data/contract_history.json</code> showing a complete contract lifecycle with multiple ownership transfers, settlements, and final exercise.
+            </p>
+          </div>
+        )}
       </div>
+
+      {showingExample && contract && (
+        <div className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-sm border border-blue-500/50 rounded-xl p-6">
+          <h2 className="text-2xl font-bold text-blue-200 mb-4">📊 Complete Test Scenario</h2>
+          
+          <div className="space-y-6">
+            {/* Overview */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2">Overview</h3>
+              <div className="bg-black/30 rounded-lg p-4 space-y-2 text-sm text-gray-300">
+                <p>• <strong className="text-blue-300">Contract PDA:</strong> <CopyableAddress address="53NKEBZLkFpB7dBRtHi54FQkAdMKT8uLGCumEPseffTQ" /></p>
+                <p>• <strong className="text-blue-300">Contract Type:</strong> AAPL/SOL Call Option</p>
+                <p>• <strong className="text-blue-300">Strike Price:</strong> 1.5 SOL (Asset/SOL ratio)</p>
+                <p>• <strong className="text-blue-300">Premium:</strong> 2.0 SOL</p>
+                <p>• <strong className="text-blue-300">Initial Margin:</strong> 1.0 SOL (both buyer and seller)</p>
+                <p>• <strong className="text-blue-300">Duration:</strong> 30 days (Aug 1-31, 2025)</p>
+                <p>• <strong className="text-blue-300">Total Transactions:</strong> 14</p>
+              </div>
+            </div>
+
+            {/* Ownership Chain */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2">👥 Ownership Transfer Chain</h3>
+              <div className="bg-black/30 rounded-lg p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">1️⃣</div>
+                  <div className="text-sm text-gray-300">
+                    <p className="font-semibold text-white">Seller <CopyableAddress address="5MDTbGuRjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj" /> creates contract</p>
+                    <p className="text-xs text-gray-400">Posts 1.0 SOL margin, lists for 2.0 SOL premium</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">2️⃣</div>
+                  <div className="text-sm text-gray-300">
+                    <p className="font-semibold text-green-400">Buyer 1 <CopyableAddress address="GXvnDHZ3jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj" /> purchases for 2.0 SOL</p>
+                    <p className="text-xs text-gray-400">Pays premium + posts 1.0 SOL margin</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">3️⃣</div>
+                  <div className="text-sm text-gray-300">
+                    <p className="font-semibold text-green-400">Buyer 2 <CopyableAddress address="Cz8WtKjnjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj" /> buys for 2.5 SOL</p>
+                    <p className="text-xs text-green-300">Buyer 1 profit: +0.5 SOL</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">4️⃣</div>
+                  <div className="text-sm text-gray-300">
+                    <p className="font-semibold text-green-400">Buyer 3 <CopyableAddress address="G2eX9ZrEjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj" /> buys for 3.0 SOL</p>
+                    <p className="text-xs text-green-300">Buyer 2 profit: +0.5 SOL</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">5️⃣</div>
+                  <div className="text-sm text-gray-300">
+                    <p className="font-semibold text-red-400">Buyer 4 <CopyableAddress address="CnmedVctjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj" /> buys for 2.8 SOL</p>
+                    <p className="text-xs text-red-300">Buyer 3 loss: -0.2 SOL (sold lower)</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">6️⃣</div>
+                  <div className="text-sm text-gray-300">
+                    <p className="font-semibold text-green-400">Buyer 5 <CopyableAddress address="DK1kvyYgjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj" /> buys for 3.5 SOL (FINAL)</p>
+                    <p className="text-xs text-green-300">Buyer 4 profit: +0.7 SOL</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Daily Settlements */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2">📈 Daily Settlement Adjustments</h3>
+              <div className="bg-black/30 rounded-lg p-4 space-y-2 text-sm">
+                <div className="grid grid-cols-5 gap-2 font-semibold text-gray-400 text-xs border-b border-gray-700 pb-2">
+                  <div>Day</div>
+                  <div>AAPL/SOL Ratio</div>
+                  <div>Buyer Margin</div>
+                  <div>Seller Margin</div>
+                  <div>Change</div>
+                </div>
+                <div className="grid grid-cols-5 gap-2 text-gray-300">
+                  <div>Day 4</div>
+                  <div>1.500</div>
+                  <div className="text-blue-300">1.000 SOL</div>
+                  <div className="text-purple-300">1.000 SOL</div>
+                  <div className="text-gray-400">No change</div>
+                </div>
+                <div className="grid grid-cols-5 gap-2 text-gray-300">
+                  <div>Day 9</div>
+                  <div>1.508</div>
+                  <div className="text-green-400">1.008 SOL ↑</div>
+                  <div className="text-red-400">0.992 SOL ↓</div>
+                  <div className="text-green-300">+0.008 buyer</div>
+                </div>
+                <div className="grid grid-cols-5 gap-2 text-gray-300">
+                  <div>Day 14</div>
+                  <div>1.487</div>
+                  <div className="text-red-400">0.987 SOL ↓</div>
+                  <div className="text-green-400">1.013 SOL ↑</div>
+                  <div className="text-red-300">-0.021 buyer</div>
+                </div>
+                <div className="grid grid-cols-5 gap-2 text-gray-300">
+                  <div>Day 19</div>
+                  <div>1.497</div>
+                  <div className="text-green-400">0.997 SOL ↑</div>
+                  <div className="text-red-400">1.003 SOL ↓</div>
+                  <div className="text-green-300">+0.010 buyer</div>
+                </div>
+                <div className="grid grid-cols-5 gap-2 text-gray-300">
+                  <div>Day 23</div>
+                  <div>1.491</div>
+                  <div className="text-red-400">0.991 SOL ↓</div>
+                  <div className="text-green-400">1.009 SOL ↑</div>
+                  <div className="text-red-300">-0.006 buyer</div>
+                </div>
+                <div className="grid grid-cols-5 gap-2 text-gray-300">
+                  <div>Day 27</div>
+                  <div>1.488</div>
+                  <div className="text-red-400">0.988 SOL ↓</div>
+                  <div className="text-green-400">1.013 SOL ↑</div>
+                  <div className="text-red-300">-0.003 buyer</div>
+                </div>
+                <div className="grid grid-cols-5 gap-2 text-gray-300 border-t border-gray-700 pt-2 font-semibold">
+                  <div>Day 30</div>
+                  <div>1.455</div>
+                  <div className="text-red-400">0.955 SOL ↓</div>
+                  <div className="text-green-400">1.045 SOL ↑</div>
+                  <div className="text-red-300">-0.033 buyer</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Final Exercise */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2">✅ Final Exercise (Day 30)</h3>
+              <div className="bg-green-900/20 border border-green-500/50 rounded-lg p-4 space-y-2 text-sm text-gray-300">
+                <p>• <strong className="text-green-300">Final Owner:</strong> Buyer 5 (DK1kvyYg...)</p>
+                <p>• <strong className="text-green-300">Strike Ratio:</strong> 1.500 SOL</p>
+                <p>• <strong className="text-green-300">Final Ratio:</strong> 1.455 SOL</p>
+                <p>• <strong className="text-green-300">Status:</strong> <span className="bg-green-500/20 px-2 py-1 rounded text-green-400">IN THE MONEY</span></p>
+                <p>• <strong className="text-green-300">Final Buyer Margin:</strong> 0.955 SOL (returned)</p>
+                <p>• <strong className="text-green-300">Final Seller Margin:</strong> 1.045 SOL (returned)</p>
+                <p className="text-xs text-gray-400 mt-3 italic">
+                  The option was exercised successfully at expiration. The buyer benefited from the favorable 
+                  price movement, while multiple intermediate traders profited from resales on the secondary market.
+                </p>
+              </div>
+            </div>
+
+            {/* Summary Stats */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2">📊 Summary Statistics</h3>
+              <div className="grid md:grid-cols-4 gap-4">
+                <div className="bg-black/30 rounded-lg p-3">
+                  <div className="text-xs text-gray-400">Total Transactions</div>
+                  <div className="text-2xl font-bold text-white">14</div>
+                </div>
+                <div className="bg-black/30 rounded-lg p-3">
+                  <div className="text-xs text-gray-400">Ownership Transfers</div>
+                  <div className="text-2xl font-bold text-blue-400">5</div>
+                </div>
+                <div className="bg-black/30 rounded-lg p-3">
+                  <div className="text-xs text-gray-400">Daily Settlements</div>
+                  <div className="text-2xl font-bold text-purple-400">6</div>
+                </div>
+                <div className="bg-black/30 rounded-lg p-3">
+                  <div className="text-xs text-gray-400">Final Status</div>
+                  <div className="text-xl font-bold text-green-400">Exercised</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {contract && (
         <>

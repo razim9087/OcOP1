@@ -14,6 +14,7 @@ pub mod escrow {
     /// option_type: 0 for Call, 1 for Put
     /// strike: The strike price in lamports (ratio of asset price to SOL price)
     /// is_test: true for test contracts (allows past dates), false for production
+    /// allow_zero_margin: true to allow zero margin for testing
     pub fn initialize_option(
         ctx: Context<InitializeOption>,
         option_type: u8,
@@ -23,11 +24,17 @@ pub mod escrow {
         strike: u64,
         initial_margin: u64,
         is_test: bool,
+        allow_zero_margin: bool,
     ) -> Result<()> {
         require!(option_type <= 1, ErrorCode::InvalidOptionType);
         require!(price > 0, ErrorCode::PriceMustBeNonZero);
         require!(strike > 0, ErrorCode::StrikeMustBeNonZero);
-        require!(initial_margin > 0, ErrorCode::MarginMustBeNonZero);
+        
+        // Allow zero margin only if explicitly allowed AND in test mode
+        if !allow_zero_margin || !is_test {
+            require!(initial_margin > 0, ErrorCode::MarginMustBeNonZero);
+        }
+        
         require!(underlying.len() <= 32, ErrorCode::UnderlyingTooLong);
         
         let clock = Clock::get()?;
@@ -53,6 +60,7 @@ pub mod escrow {
         option.owner = Pubkey::default(); // No owner initially
         option.bump = ctx.bumps.option;
         option.is_test = is_test;
+        option.allow_zero_margin = allow_zero_margin;
         
         // Margin account initialization
         option.initial_margin = initial_margin;
@@ -550,6 +558,7 @@ pub struct OptionContract {
     pub owner: Pubkey,             // 32 bytes - Buyer's public key
     pub bump: u8,                  // 1 byte
     pub is_test: bool,             // 1 byte - Test mode allows past dates
+    pub allow_zero_margin: bool,   // 1 byte - Allow zero margin for testing
     
     // Margin management fields
     pub initial_margin: u64,       // 8 bytes - Required margin per party
@@ -560,7 +569,7 @@ pub struct OptionContract {
 }
 
 impl OptionContract {
-    pub const INIT_SPACE: usize = 1 + (4 + 32) + 32 + 8 + 8 + 1 + 8 + 8 + 32 + 1 + 1 + 8 + 8 + 8 + 8 + 8;
+    pub const INIT_SPACE: usize = 1 + (4 + 32) + 32 + 8 + 8 + 1 + 8 + 8 + 32 + 1 + 1 + 1 + 8 + 8 + 8 + 8 + 8;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]

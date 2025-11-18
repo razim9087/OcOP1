@@ -48,7 +48,8 @@ describe('Options Contract', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                true  // is_test mode
+                true,  // is_test mode
+                false  // allow_zero_margin
             )
             .accountsPartial({
                 seller: seller.publicKey,
@@ -88,7 +89,8 @@ describe('Options Contract', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                true  // is_test mode
+                true,  // is_test mode
+                false  // allow_zero_margin
             )
             .accountsPartial({
                 seller: seller.publicKey,
@@ -138,7 +140,8 @@ describe('Options Contract', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                false  // production mode - enforces European option rules
+                false,  // production mode - enforces European option rules
+                false   // allow_zero_margin
             )
             .accountsPartial({
                 seller: seller.publicKey,
@@ -198,7 +201,8 @@ describe('Options Contract', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                true  // is_test mode
+                true,  // is_test mode
+                false  // allow_zero_margin
             )
             .accountsPartial({
                 seller: seller.publicKey,
@@ -249,7 +253,8 @@ describe('Options Contract', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                true  // is_test mode
+                true,  // is_test mode
+                false  // allow_zero_margin
             )
             .accountsPartial({
                 seller: seller.publicKey,
@@ -297,7 +302,8 @@ describe('Options Contract', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                true  // is_test mode
+                true,  // is_test mode
+                false  // allow_zero_margin
             )
             .accountsPartial({
                 seller: freshSeller.publicKey,
@@ -380,7 +386,8 @@ describe('Options Contract', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                true  // is_test mode
+                true,  // is_test mode
+                false  // allow_zero_margin
             )
             .accountsPartial({
                 seller: freshSeller.publicKey,
@@ -422,17 +429,23 @@ describe('Options Contract', () => {
         }
     });
 
-    it.skip('Performs daily settlement and updates margins (requires 24hr wait)', async () => {
-        // This test is skipped because it requires 24 hours to pass since purchase
-        // In a real scenario, daily settlement would be called after 24+ hours
+    it('Rejects purchase attempt on delisted option', async () => {
         const currentTime = Math.floor(Date.now() / 1000);
         const underlying6 = "ADA/USDC";
         
+        const freshSeller = web3.Keypair.generate();
+        const freshBuyer = web3.Keypair.generate();
+        
+        await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await connection.requestAirdrop(freshBuyer.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const [optionPda] = web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("option"), seller.publicKey.toBuffer(), Buffer.from(underlying6)],
+            [Buffer.from("option"), freshSeller.publicKey.toBuffer(), Buffer.from(underlying6)],
             program.programId
         );
 
+        // Initialize and immediately delist the option
         await program.methods
             .initializeOption(
                 CALL_OPTION,
@@ -441,176 +454,111 @@ describe('Options Contract', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                true  // is_test mode
+                true,  // is_test mode
+                false  // allow_zero_margin
             )
             .accountsPartial({
-                seller: seller.publicKey,
+                seller: freshSeller.publicKey,
             })
-            .signers([seller])
+            .signers([freshSeller])
             .rpc();
 
         await program.methods
-            .purchaseOption()
+            .delistOption()
             .accountsPartial({
                 option: optionPda,
-                buyer: buyer.publicKey,
-                seller: seller.publicKey,
+                seller: freshSeller.publicKey,
             })
-            .signers([buyer, seller])
+            .signers([freshSeller])
             .rpc();
 
-        // Note: In production, wait 24+ hours before calling daily_settlement
-        const settlementAssetPrice = new anchor.BN(110_000_000); 
-        const settlementSolPrice = new anchor.BN(50_000_000);
-        
-        const settler = web3.Keypair.generate();
-        await connection.requestAirdrop(settler.publicKey, 1 * web3.LAMPORTS_PER_SOL);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        await program.methods
-            .dailySettlement(settlementAssetPrice, settlementSolPrice)
-            .accountsPartial({
-                option: optionPda,
-                settler: settler.publicKey,
-            })
-            .signers([settler])
-            .rpc();
-
-        const optionAfter = await program.account.optionContract.fetch(optionPda);
-        assert.isTrue(optionAfter.lastSettlementDate.toNumber() > 0);
+        // Attempt to purchase delisted option (should fail)
+        try {
+            await program.methods
+                .purchaseOption()
+                .accountsPartial({
+                    option: optionPda,
+                    buyer: freshBuyer.publicKey,
+                    seller: freshSeller.publicKey,
+                })
+                .signers([freshBuyer, freshSeller])
+                .rpc();
+            
+            assert.fail("Should have thrown error for purchasing delisted option");
+        } catch (error: any) {
+            assert.include(error.toString(), "OptionNotAvailable");
+        }
     });
 
-    it.skip('Triggers margin call when margin falls below 20% threshold (requires 24hr wait)', async () => {
+    it('Rejects option initialization with zero price', async () => {
         const currentTime = Math.floor(Date.now() / 1000);
         const underlying7 = "DOT/USDC";
         
-        const [optionPda] = web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("option"), seller.publicKey.toBuffer(), Buffer.from(underlying7)],
-            program.programId
-        );
-
-        // Use smaller amounts for this test
-        const smallMargin = new anchor.BN(0.1 * web3.LAMPORTS_PER_SOL); // 0.1 SOL
-        const smallPrice = new anchor.BN(0.2 * web3.LAMPORTS_PER_SOL); // 0.2 SOL
-
-        // Initialize PUT option
-        await program.methods
-            .initializeOption(
-                PUT_OPTION,
-                underlying7,
-                new anchor.BN(currentTime),
-                smallPrice,
-                strikePrice,
-                smallMargin,
-                true  // is_test mode
-            )
-            .accountsPartial({
-                seller: seller.publicKey,
-            })
-            .signers([seller])
-            .rpc();
-
-        await program.methods
-            .purchaseOption()
-            .accountsPartial({
-                option: optionPda,
-                buyer: buyer.publicKey,
-                seller: seller.publicKey,
-            })
-            .signers([buyer, seller])
-            .rpc();
-
-        // Note: This test is skipped because settlement requires 24 hours to pass
-        // In production, after 24+ hours, call daily_settlement with extreme prices
-        const extremeAssetPrice = new anchor.BN(500_000_000); 
-        const extremeSolPrice = new anchor.BN(50_000_000);
-        
-        const settler = web3.Keypair.generate();
-        await connection.requestAirdrop(settler.publicKey, 1 * web3.LAMPORTS_PER_SOL);
+        const freshSeller = web3.Keypair.generate();
+        await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        await program.methods
-            .dailySettlement(extremeAssetPrice, extremeSolPrice)
-            .accountsPartial({
-                option: optionPda,
-                settler: settler.publicKey,
-            })
-            .signers([settler])
-            .rpc();
+        const zeroPrice = new anchor.BN(0); // Invalid: zero price
+        const smallMargin = new anchor.BN(0.1 * web3.LAMPORTS_PER_SOL);
 
-        const optionAfter = await program.account.optionContract.fetch(optionPda);
-        const marginCallTriggered = optionAfter.status.expired !== undefined;
-        assert.isTrue(marginCallTriggered);
+        // Attempt to initialize with zero price (should fail)
+        try {
+            await program.methods
+                .initializeOption(
+                    PUT_OPTION,
+                    underlying7,
+                    new anchor.BN(currentTime),
+                    zeroPrice,  // Zero price - should fail
+                    strikePrice,
+                    smallMargin,
+                    true,  // is_test mode
+                    false  // allow_zero_margin
+                )
+                .accountsPartial({
+                    seller: freshSeller.publicKey,
+                })
+                .signers([freshSeller])
+                .rpc();
+            
+            assert.fail("Should have thrown error for zero price");
+        } catch (error: any) {
+            assert.include(error.toString(), "PriceMustBeNonZero");
+        }
     });
 
-    it.skip('Prevents settlement on the same day (requires 24hr wait)', async () => {
+    it('Rejects option initialization with zero strike price', async () => {
         const currentTime = Math.floor(Date.now() / 1000);
         const underlying8 = "LINK/USDC";
         
-        const [optionPda] = web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("option"), seller.publicKey.toBuffer(), Buffer.from(underlying8)],
-            program.programId
-        );
-
-        const smallPrice = new anchor.BN(0.2 * web3.LAMPORTS_PER_SOL);
-
-        await program.methods
-            .initializeOption(
-                CALL_OPTION,
-                underlying8,
-                new anchor.BN(currentTime),
-                smallPrice,
-                strikePrice,
-                initialMargin,
-                true  // is_test mode
-            )
-            .accountsPartial({
-                seller: seller.publicKey,
-            })
-            .signers([seller])
-            .rpc();
-
-        await program.methods
-            .purchaseOption()
-            .accountsPartial({
-                option: optionPda,
-                buyer: buyer.publicKey,
-                seller: seller.publicKey,
-            })
-            .signers([buyer, seller])
-            .rpc();
-
-        // First settlement
-        const assetPrice = new anchor.BN(100_000_000);
-        const solPrice = new anchor.BN(50_000_000);
-        
-        const settler = web3.Keypair.generate();
-        await connection.requestAirdrop(settler.publicKey, 1 * web3.LAMPORTS_PER_SOL);
+        const freshSeller = web3.Keypair.generate();
+        await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        await program.methods
-            .dailySettlement(assetPrice, solPrice)
-            .accountsPartial({
-                option: optionPda,
-                settler: settler.publicKey,
-            })
-            .signers([settler])
-            .rpc();
+        const smallPrice = new anchor.BN(0.2 * web3.LAMPORTS_PER_SOL);
+        const zeroStrike = new anchor.BN(0); // Invalid: zero strike
 
-        // Attempt second settlement immediately (should fail)
+        // Attempt to initialize with zero strike price (should fail)
         try {
             await program.methods
-                .dailySettlement(assetPrice, solPrice)
+                .initializeOption(
+                    CALL_OPTION,
+                    underlying8,
+                    new anchor.BN(currentTime),
+                    smallPrice,
+                    zeroStrike,  // Zero strike - should fail
+                    initialMargin,
+                    true,  // is_test mode
+                    false  // allow_zero_margin
+                )
                 .accountsPartial({
-                    option: optionPda,
-                    settler: settler.publicKey,
+                    seller: freshSeller.publicKey,
                 })
-                .signers([settler])
+                .signers([freshSeller])
                 .rpc();
             
-            assert.fail("Should have thrown error for same-day settlement");
+            assert.fail("Should have thrown error for zero strike price");
         } catch (error: any) {
-            assert.include(error.toString(), "AlreadySettledToday");
+            assert.include(error.toString(), "StrikeMustBeNonZero");
         }
     });
 
@@ -636,7 +584,8 @@ describe('Options Contract', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                true  // is_test mode - allows past dates
+                true,  // is_test mode - allows past dates
+                false  // allow_zero_margin
             )
             .accountsPartial({
                 seller: freshSeller.publicKey,
@@ -667,7 +616,8 @@ describe('Options Contract', () => {
                     optionPrice,
                     strikePrice,
                     initialMargin,
-                    false  // production mode - rejects past dates
+                    false,  // production mode - rejects past dates
+                    false   // allow_zero_margin
                 )
                 .accountsPartial({
                     seller: freshSeller.publicKey,
@@ -679,5 +629,548 @@ describe('Options Contract', () => {
         } catch (error: any) {
             assert.include(error.toString(), "InvalidInitiationDate");
         }
+    });
+
+    it('Rejects invalid option type (not 0 or 1)', async () => {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const underlying_invalid = "INVALID/USDC";
+        
+        const freshSeller = web3.Keypair.generate();
+        await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Attempt to initialize with invalid option type (should fail)
+        try {
+            await program.methods
+                .initializeOption(
+                    5,  // Invalid option type (should be 0 or 1)
+                    underlying_invalid,
+                    new anchor.BN(currentTime),
+                    optionPrice,
+                    strikePrice,
+                    initialMargin,
+                    true,  // is_test mode
+                    false  // allow_zero_margin
+                )
+                .accountsPartial({
+                    seller: freshSeller.publicKey,
+                })
+                .signers([freshSeller])
+                .rpc();
+            
+            assert.fail("Should have thrown error for invalid option type");
+        } catch (error: any) {
+            assert.include(error.toString(), "InvalidOptionType");
+        }
+    });
+
+    it('Prevents non-owner from exercising option', async () => {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const underlying_notowner = "NOTOWNER/USDC";
+        
+        const freshSeller = web3.Keypair.generate();
+        const freshBuyer = web3.Keypair.generate();
+        const unauthorized = web3.Keypair.generate();
+        
+        await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await connection.requestAirdrop(freshBuyer.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await connection.requestAirdrop(unauthorized.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const [optionPda] = web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("option"), freshSeller.publicKey.toBuffer(), Buffer.from(underlying_notowner)],
+            program.programId
+        );
+
+        // Initialize and purchase option
+        await program.methods
+            .initializeOption(
+                CALL_OPTION,
+                underlying_notowner,
+                new anchor.BN(currentTime),
+                optionPrice,
+                strikePrice,
+                initialMargin,
+                true,  // is_test mode
+                false  // allow_zero_margin
+            )
+            .accountsPartial({
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshSeller])
+            .rpc();
+
+        await program.methods
+            .purchaseOption()
+            .accountsPartial({
+                option: optionPda,
+                buyer: freshBuyer.publicKey,
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshBuyer, freshSeller])
+            .rpc();
+
+        // Attempt to exercise by non-owner (should fail)
+        const assetPrice = new anchor.BN(100_000_000);
+        const solPrice = new anchor.BN(50_000_000);
+        
+        try {
+            await program.methods
+                .exerciseOption(assetPrice, solPrice)
+                .accountsPartial({
+                    option: optionPda,
+                    owner: unauthorized.publicKey,
+                })
+                .signers([unauthorized])
+                .rpc();
+            
+            assert.fail("Should have thrown error for unauthorized exercise");
+        } catch (error: any) {
+            assert.include(error.toString(), "Unauthorized");
+        }
+    });
+
+    it('Prevents delist of owned option', async () => {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const underlying_owned = "OWNED/USDC";
+        
+        const freshSeller = web3.Keypair.generate();
+        const freshBuyer = web3.Keypair.generate();
+        
+        await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await connection.requestAirdrop(freshBuyer.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const [optionPda] = web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("option"), freshSeller.publicKey.toBuffer(), Buffer.from(underlying_owned)],
+            program.programId
+        );
+
+        // Initialize and purchase option
+        await program.methods
+            .initializeOption(
+                PUT_OPTION,
+                underlying_owned,
+                new anchor.BN(currentTime),
+                optionPrice,
+                strikePrice,
+                initialMargin,
+                true,  // is_test mode
+                false  // allow_zero_margin
+            )
+            .accountsPartial({
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshSeller])
+            .rpc();
+
+        await program.methods
+            .purchaseOption()
+            .accountsPartial({
+                option: optionPda,
+                buyer: freshBuyer.publicKey,
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshBuyer, freshSeller])
+            .rpc();
+
+        // Attempt to delist an owned option (should fail)
+        try {
+            await program.methods
+                .delistOption()
+                .accountsPartial({
+                    option: optionPda,
+                    seller: freshSeller.publicKey,
+                })
+                .signers([freshSeller])
+                .rpc();
+            
+            assert.fail("Should have thrown error for delisting owned option");
+        } catch (error: any) {
+            assert.include(error.toString(), "CannotDelistOwnedOption");
+        }
+    });
+
+    it('Prevents settlement with zero SOL price', async () => {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const underlying_settlement = "SETTLE/USDC";
+        
+        const freshSeller = web3.Keypair.generate();
+        const freshBuyer = web3.Keypair.generate();
+        
+        await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await connection.requestAirdrop(freshBuyer.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const [optionPda] = web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("option"), freshSeller.publicKey.toBuffer(), Buffer.from(underlying_settlement)],
+            program.programId
+        );
+
+        // Initialize and purchase option
+        await program.methods
+            .initializeOption(
+                CALL_OPTION,
+                underlying_settlement,
+                new anchor.BN(currentTime),
+                optionPrice,
+                strikePrice,
+                initialMargin,
+                true,  // is_test mode
+                false  // allow_zero_margin
+            )
+            .accountsPartial({
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshSeller])
+            .rpc();
+
+        await program.methods
+            .purchaseOption()
+            .accountsPartial({
+                option: optionPda,
+                buyer: freshBuyer.publicKey,
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshBuyer, freshSeller])
+            .rpc();
+
+        // Attempt settlement with zero SOL price (should fail)
+        const zeroPrice = new anchor.BN(0);
+        const validAssetPrice = new anchor.BN(100_000_000);
+        
+        const settler = web3.Keypair.generate();
+        await connection.requestAirdrop(settler.publicKey, 1 * web3.LAMPORTS_PER_SOL);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        try {
+            await program.methods
+                .dailySettlement(validAssetPrice, zeroPrice)
+                .accountsPartial({
+                    option: optionPda,
+                    settler: settler.publicKey,
+                })
+                .signers([settler])
+                .rpc();
+            
+            assert.fail("Should have thrown error for zero SOL price");
+        } catch (error: any) {
+            assert.include(error.toString(), "InvalidPrice");
+        }
+    });
+
+    it('Prevents purchase of already owned option', async () => {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const underlying_double = "DOUBLE/USDC";
+        
+        const freshSeller = web3.Keypair.generate();
+        const freshBuyer1 = web3.Keypair.generate();
+        const freshBuyer2 = web3.Keypair.generate();
+        
+        await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await connection.requestAirdrop(freshBuyer1.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await connection.requestAirdrop(freshBuyer2.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const [optionPda] = web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("option"), freshSeller.publicKey.toBuffer(), Buffer.from(underlying_double)],
+            program.programId
+        );
+
+        // Initialize option
+        await program.methods
+            .initializeOption(
+                CALL_OPTION,
+                underlying_double,
+                new anchor.BN(currentTime),
+                optionPrice,
+                strikePrice,
+                initialMargin,
+                true,  // is_test mode
+                false  // allow_zero_margin
+            )
+            .accountsPartial({
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshSeller])
+            .rpc();
+
+        // First purchase
+        await program.methods
+            .purchaseOption()
+            .accountsPartial({
+                option: optionPda,
+                buyer: freshBuyer1.publicKey,
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshBuyer1, freshSeller])
+            .rpc();
+
+        // Attempt second purchase (should fail - option already owned)
+        try {
+            await program.methods
+                .purchaseOption()
+                .accountsPartial({
+                    option: optionPda,
+                    buyer: freshBuyer2.publicKey,
+                    seller: freshSeller.publicKey,
+                })
+                .signers([freshBuyer2, freshSeller])
+                .rpc();
+            
+            assert.fail("Should have thrown error for purchasing already owned option");
+        } catch (error: any) {
+            assert.include(error.toString(), "OptionNotAvailable");
+        }
+    });
+
+    // Zero Margin Tests
+    describe('Zero Margin Options (Test Mode)', () => {
+        it('Allows zero margin in test mode with allow_zero_margin=true', async () => {
+            const currentTime = Math.floor(Date.now() / 1000);
+            const underlying13 = "ZERO1/USDC";
+            const zeroMargin = new anchor.BN(0); // Zero margin
+            
+            const freshSeller = web3.Keypair.generate();
+            await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const [optionPda] = web3.PublicKey.findProgramAddressSync(
+                [Buffer.from("option"), freshSeller.publicKey.toBuffer(), Buffer.from(underlying13)],
+                program.programId
+            );
+
+            // Initialize with zero margin and allow_zero_margin=true (should succeed)
+            await program.methods
+                .initializeOption(
+                    CALL_OPTION,
+                    underlying13,
+                    new anchor.BN(currentTime),
+                    optionPrice,
+                    strikePrice,
+                    zeroMargin,
+                    true,  // is_test mode
+                    true   // allow_zero_margin
+                )
+                .accountsPartial({
+                    seller: freshSeller.publicKey,
+                })
+                .signers([freshSeller])
+                .rpc();
+
+            const optionAccount = await program.account.optionContract.fetch(optionPda);
+            assert.equal(optionAccount.initialMargin.toNumber(), 0);
+            assert.equal(optionAccount.allowZeroMargin, true);
+            assert.equal(optionAccount.isTest, true);
+        });
+
+        it('Rejects zero margin in test mode with allow_zero_margin=false', async () => {
+            const currentTime = Math.floor(Date.now() / 1000);
+            const underlying14 = "ZERO2/USDC";
+            const zeroMargin = new anchor.BN(0);
+            
+            const freshSeller = web3.Keypair.generate();
+            await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Try to initialize with zero margin and allow_zero_margin=false (should fail)
+            try {
+                await program.methods
+                    .initializeOption(
+                        CALL_OPTION,
+                        underlying14,
+                        new anchor.BN(currentTime),
+                        optionPrice,
+                        strikePrice,
+                        zeroMargin,
+                        true,  // is_test mode
+                        false  // allow_zero_margin = false
+                    )
+                    .accountsPartial({
+                        seller: freshSeller.publicKey,
+                    })
+                    .signers([freshSeller])
+                    .rpc();
+                
+                assert.fail("Should have thrown error for zero margin without allow_zero_margin");
+            } catch (error: any) {
+                assert.include(error.toString(), "MarginMustBeNonZero");
+            }
+        });
+
+        it('Rejects zero margin in production mode even with allow_zero_margin=true', async () => {
+            const currentTime = Math.floor(Date.now() / 1000);
+            const underlying15 = "ZERO3/USDC";
+            const zeroMargin = new anchor.BN(0);
+            
+            const freshSeller = web3.Keypair.generate();
+            await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Try to initialize with zero margin in production mode (should fail)
+            try {
+                await program.methods
+                    .initializeOption(
+                        CALL_OPTION,
+                        underlying15,
+                        new anchor.BN(currentTime),
+                        optionPrice,
+                        strikePrice,
+                        zeroMargin,
+                        false,  // production mode
+                        true    // allow_zero_margin (shouldn't matter in production)
+                    )
+                    .accountsPartial({
+                        seller: freshSeller.publicKey,
+                    })
+                    .signers([freshSeller])
+                    .rpc();
+                
+                assert.fail("Should have thrown error for zero margin in production mode");
+            } catch (error: any) {
+                assert.include(error.toString(), "MarginMustBeNonZero");
+            }
+        });
+
+        it('Purchases zero-margin option without requiring margin deposits', async () => {
+            const currentTime = Math.floor(Date.now() / 1000);
+            const underlying16 = "ZERO4/USDC";
+            const zeroMargin = new anchor.BN(0);
+            
+            const freshSeller = web3.Keypair.generate();
+            const freshBuyer = web3.Keypair.generate();
+            
+            await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+            await connection.requestAirdrop(freshBuyer.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const [optionPda] = web3.PublicKey.findProgramAddressSync(
+                [Buffer.from("option"), freshSeller.publicKey.toBuffer(), Buffer.from(underlying16)],
+                program.programId
+            );
+
+            // Initialize zero-margin option
+            await program.methods
+                .initializeOption(
+                    PUT_OPTION,
+                    underlying16,
+                    new anchor.BN(currentTime),
+                    optionPrice,
+                    strikePrice,
+                    zeroMargin,
+                    true,  // is_test mode
+                    true   // allow_zero_margin
+                )
+                .accountsPartial({
+                    seller: freshSeller.publicKey,
+                })
+                .signers([freshSeller])
+                .rpc();
+
+            const buyerBalanceBefore = await connection.getBalance(freshBuyer.publicKey);
+            const sellerBalanceBefore = await connection.getBalance(freshSeller.publicKey);
+
+            // Purchase option
+            await program.methods
+                .purchaseOption()
+                .accountsPartial({
+                    option: optionPda,
+                    buyer: freshBuyer.publicKey,
+                    seller: freshSeller.publicKey,
+                })
+                .signers([freshBuyer, freshSeller])
+                .rpc();
+
+            const optionAccount = await program.account.optionContract.fetch(optionPda);
+            const buyerBalanceAfter = await connection.getBalance(freshBuyer.publicKey);
+            const sellerBalanceAfter = await connection.getBalance(freshSeller.publicKey);
+            
+            // Verify no margin deposits required
+            assert.equal(optionAccount.buyerMargin.toNumber(), 0);
+            assert.equal(optionAccount.sellerMargin.toNumber(), 0);
+            assert.equal(optionAccount.status.owned !== undefined, true);
+            assert.equal(optionAccount.owner.toString(), freshBuyer.publicKey.toString());
+            
+            // Buyer should only pay premium (plus fees), no margin
+            const buyerCost = buyerBalanceBefore - buyerBalanceAfter;
+            assert.isTrue(buyerCost < optionPrice.toNumber() * 1.1, 'Buyer should only pay premium, not margin');
+            
+            // Seller should receive premium (minus fees), no margin deducted
+            const sellerGain = sellerBalanceAfter - sellerBalanceBefore;
+            assert.isTrue(sellerGain > optionPrice.toNumber() * 0.9, 'Seller should receive premium without margin deduction');
+        });
+
+        it('Allows reselling zero-margin option without margin transfers', async () => {
+            const currentTime = Math.floor(Date.now() / 1000);
+            const underlying17 = "ZERO5/USDC";
+            const zeroMargin = new anchor.BN(0);
+            
+            const freshSeller = web3.Keypair.generate();
+            const freshBuyer1 = web3.Keypair.generate();
+            const freshBuyer2 = web3.Keypair.generate();
+            
+            await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+            await connection.requestAirdrop(freshBuyer1.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+            await connection.requestAirdrop(freshBuyer2.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const [optionPda] = web3.PublicKey.findProgramAddressSync(
+                [Buffer.from("option"), freshSeller.publicKey.toBuffer(), Buffer.from(underlying17)],
+                program.programId
+            );
+
+            // Initialize and purchase zero-margin option
+            await program.methods
+                .initializeOption(
+                    CALL_OPTION,
+                    underlying17,
+                    new anchor.BN(currentTime),
+                    optionPrice,
+                    strikePrice,
+                    zeroMargin,
+                    true,  // is_test mode
+                    true   // allow_zero_margin
+                )
+                .accountsPartial({
+                    seller: freshSeller.publicKey,
+                })
+                .signers([freshSeller])
+                .rpc();
+
+            await program.methods
+                .purchaseOption()
+                .accountsPartial({
+                    option: optionPda,
+                    buyer: freshBuyer1.publicKey,
+                    seller: freshSeller.publicKey,
+                })
+                .signers([freshBuyer1, freshSeller])
+                .rpc();
+
+            // Resell to second buyer
+            const resellPrice = new anchor.BN(2.5 * web3.LAMPORTS_PER_SOL);
+            const buyer2BalanceBefore = await connection.getBalance(freshBuyer2.publicKey);
+            
+            await program.methods
+                .resellOption(resellPrice)
+                .accountsPartial({
+                    option: optionPda,
+                    currentOwner: freshBuyer1.publicKey,
+                    newBuyer: freshBuyer2.publicKey,
+                })
+                .signers([freshBuyer1, freshBuyer2])
+                .rpc();
+
+            const optionAccount = await program.account.optionContract.fetch(optionPda);
+            const buyer2BalanceAfter = await connection.getBalance(freshBuyer2.publicKey);
+            
+            // Verify ownership transfer
+            assert.equal(optionAccount.owner.toString(), freshBuyer2.publicKey.toString());
+            assert.equal(optionAccount.buyerMargin.toNumber(), 0);
+            
+            // Second buyer should only pay resell price, no margin
+            const buyer2Cost = buyer2BalanceBefore - buyer2BalanceAfter;
+            assert.isTrue(buyer2Cost < resellPrice.toNumber() * 1.1, 'Second buyer should only pay resell price, not margin');
+        });
     });
 });

@@ -107,7 +107,8 @@ describe('Multiple Ownership Transfer Test (5 Transfers)', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                true
+                true,  // Test mode
+                false  // allow_zero_margin
             )
             .accountsPartial({
                 seller: seller.publicKey,

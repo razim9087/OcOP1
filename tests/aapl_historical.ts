@@ -94,7 +94,8 @@ describe('AAPL Historical Options Contract (Aug 1 - Sep 1, 2025)', () => {
                 optionPrice,
                 strikePrice,
                 initialMargin,
-                true  // Test mode enabled
+                true,  // Test mode enabled
+                false  // allow_zero_margin
             )
             .accountsPartial({
                 seller: seller.publicKey,
@@ -390,7 +391,8 @@ describe('AAPL Historical Options Contract (Aug 1 - Sep 1, 2025)', () => {
                 smallPrice,
                 strikePrice,
                 smallMargin,
-                true
+                true,  // Test mode
+                false  // allow_zero_margin
             )
             .accountsPartial({
                 seller: marginSeller.publicKey,

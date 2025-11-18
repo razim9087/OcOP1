@@ -1,5 +1,5 @@
 {
-  "address": "E5ijR9ex1qWRQGXBSQ7ZiRbP72xtqzxrNXvQRB9PaTYL",
+  "address": "FX3EgWWVrVCzgtntijpgfCT22C7HXpq6Py9DrYmDjR3E",
   "metadata": {
     "name": "escrow",
     "version": "0.1.0",
@@ -137,7 +137,8 @@
         "Initialize a new options contract with margin accounts",
         "option_type: 0 for Call, 1 for Put",
         "strike: The strike price in lamports (ratio of asset price to SOL price)",
-        "is_test: true for test contracts (allows past dates), false for production"
+        "is_test: true for test contracts (allows past dates), false for production",
+        "allow_zero_margin: true to allow zero margin for testing"
       ],
       "discriminator": [
         33,
@@ -214,6 +215,10 @@
         },
         {
           "name": "is_test",
+          "type": "bool"
+        },
+        {
+          "name": "allow_zero_margin",
           "type": "bool"
         }
       ]
@@ -453,6 +458,10 @@
           },
           {
             "name": "is_test",
+            "type": "bool"
+          },
+          {
+            "name": "allow_zero_margin",
             "type": "bool"
           },
           {

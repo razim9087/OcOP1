@@ -11,14 +11,17 @@ export default function Navbar() {
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">S</span>
+                <span className="text-white font-bold text-xl">O</span>
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Solana Options
+                OcOP
               </span>
             </Link>
             
             <div className="hidden md:flex gap-6">
+          <Link href="/introduction" className="text-gray-300 hover:text-white transition-colors">
+            Introduction
+          </Link>
           <Link href="/markets" className="text-gray-300 hover:text-white transition-colors">
             Markets
           </Link>
@@ -30,9 +33,6 @@ export default function Navbar() {
           </Link>
           <Link href="/transactions" className="text-gray-300 hover:text-white transition-colors">
             Transactions
-          </Link>
-          <Link href="/lookup" className="text-gray-300 hover:text-white transition-colors">
-            Lookup
           </Link>
           <Link href="/contract" className="text-gray-300 hover:text-white transition-colors">
             Contract History
