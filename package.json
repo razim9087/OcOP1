@@ -22,6 +22,7 @@
     "@types/react": "^17.0.2",
     "@types/react-dom": "^17.0.2",
     "chai": "^4.3.6",
+    "mocha": "^11.7.5",
     "ts-mocha": "^10.0.0",
     "typescript": "^4.9.5"
   },

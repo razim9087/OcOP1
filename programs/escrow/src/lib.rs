@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("E5ijR9ex1qWRQGXBSQ7ZiRbP72xtqzxrNXvQRB9PaTYL");
+declare_id!("FX3EgWWVrVCzgtntijpgfCT22C7HXpq6Py9DrYmDjR3E");
 
 // Constants for margin management
 const MARGIN_CALL_THRESHOLD: u64 = 20; // 20% of initial margin

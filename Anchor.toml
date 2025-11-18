@@ -5,7 +5,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-escrow = "E5ijR9ex1qWRQGXBSQ7ZiRbP72xtqzxrNXvQRB9PaTYL"
+escrow = "FX3EgWWVrVCzgtntijpgfCT22C7HXpq6Py9DrYmDjR3E"
 
 [registry]
 url = "https://api.apr.dev"

@@ -1,0 +1,266 @@
+{
+  "contract": {
+    "address": "53NKEBZLkFpB7dBRtHi54FQkAdMKT8uLGCumEPseffTQ",
+    "programId": "FX3EgWWVrVCzgtntijpgfCT22C7HXpq6Py9DrYmDjR3E",
+    "createdAt": "2025-11-18T00:00:00.000Z",
+    "type": "Call Option",
+    "underlying": "AAPL/SOL",
+    "strike": 1.5,
+    "premium": 2.0,
+    "margin": 1.0
+  },
+  "participants": {
+    "seller": "5MDTbGuR...",
+    "buyer1": "GXvnDHZ3...",
+    "buyer2": "Cz8WtKjn...",
+    "buyer3": "G2eX9ZrE...",
+    "buyer4": "CnmedVct...",
+    "buyer5": "DK1kvyYg..."
+  },
+  "transactions": [
+    {
+      "slot": 302,
+      "type": "initialization",
+      "signature": "init_sig_302",
+      "timestamp": "2025-08-01T00:00:00.000Z",
+      "instruction": "InitializeOption",
+      "details": {
+        "contractType": "Call",
+        "underlying": "AAPL/SOL",
+        "strike": 1.5,
+        "premium": 2.0,
+        "buyerMargin": 1.0,
+        "sellerMargin": 1.0,
+        "initiationDate": "2025-08-01",
+        "expiryDate": "2025-08-31"
+      }
+    },
+    {
+      "slot": 303,
+      "type": "purchase",
+      "signature": "purchase_sig_303",
+      "timestamp": "2025-08-01T01:00:00.000Z",
+      "instruction": "PurchaseOption",
+      "details": {
+        "buyer": "GXvnDHZ3...",
+        "seller": "5MDTbGuR...",
+        "price": 2.0,
+        "buyerMargin": 1.0,
+        "sellerMargin": 1.0,
+        "aaplPrice": 225.5,
+        "solPrice": 150.0,
+        "ratio": 1.503
+      }
+    },
+    {
+      "slot": 304,
+      "type": "settlement",
+      "signature": "settlement_sig_304",
+      "timestamp": "2025-08-05T00:00:00.000Z",
+      "instruction": "SettlementDaily",
+      "details": {
+        "day": 4,
+        "aaplPrice": 228.75,
+        "solPrice": 152.5,
+        "ratio": 1.5,
+        "buyerMargin": 1.0,
+        "sellerMargin": 1.0,
+        "buyerChange": 0,
+        "sellerChange": 0
+      }
+    },
+    {
+      "slot": 305,
+      "type": "settlement",
+      "signature": "settlement_sig_305",
+      "timestamp": "2025-08-10T00:00:00.000Z",
+      "instruction": "SettlementDaily",
+      "details": {
+        "day": 9,
+        "aaplPrice": 223.25,
+        "solPrice": 148.0,
+        "ratio": 1.508,
+        "buyerMargin": 1.008445945,
+        "sellerMargin": 0.991554055,
+        "buyerChange": 0.008445945,
+        "sellerChange": -0.008445945
+      }
+    },
+    {
+      "slot": 306,
+      "type": "settlement",
+      "signature": "settlement_sig_306",
+      "timestamp": "2025-08-15T00:00:00.000Z",
+      "instruction": "SettlementDaily",
+      "details": {
+        "day": 14,
+        "aaplPrice": 230.5,
+        "solPrice": 155.0,
+        "ratio": 1.487,
+        "buyerMargin": 0.987096774,
+        "sellerMargin": 1.012903226,
+        "buyerChange": -0.021349171,
+        "sellerChange": 0.021349171
+      }
+    },
+    {
+      "slot": 307,
+      "type": "resell",
+      "signature": "resell_sig_307",
+      "timestamp": "2025-08-18T00:00:00.000Z",
+      "instruction": "ResellOption",
+      "details": {
+        "seller": "GXvnDHZ3...",
+        "buyer": "Cz8WtKjn...",
+        "price": 2.5,
+        "profit": 0.5,
+        "transferNumber": 2
+      }
+    },
+    {
+      "slot": 310,
+      "type": "settlement",
+      "signature": "settlement_sig_310",
+      "timestamp": "2025-08-20T00:00:00.000Z",
+      "instruction": "SettlementDaily",
+      "details": {
+        "day": 19,
+        "aaplPrice": 232.0,
+        "solPrice": 155.0,
+        "ratio": 1.497,
+        "buyerMargin": 0.996774193,
+        "sellerMargin": 1.003225807,
+        "buyerChange": 0.009677419,
+        "sellerChange": -0.009677419
+      }
+    },
+    {
+      "slot": 311,
+      "type": "resell",
+      "signature": "resell_sig_311",
+      "timestamp": "2025-08-22T00:00:00.000Z",
+      "instruction": "ResellOption",
+      "details": {
+        "seller": "Cz8WtKjn...",
+        "buyer": "G2eX9ZrE...",
+        "price": 3.0,
+        "profit": 0.5,
+        "transferNumber": 3
+      }
+    },
+    {
+      "slot": 314,
+      "type": "settlement",
+      "signature": "settlement_sig_314",
+      "timestamp": "2025-08-24T00:00:00.000Z",
+      "instruction": "SettlementDaily",
+      "details": {
+        "day": 23,
+        "aaplPrice": 235.5,
+        "solPrice": 158.0,
+        "ratio": 1.491,
+        "buyerMargin": 0.990506329,
+        "sellerMargin": 1.009493671,
+        "buyerChange": -0.006267864,
+        "sellerChange": 0.006267864
+      }
+    },
+    {
+      "slot": 315,
+      "type": "resell",
+      "signature": "resell_sig_315",
+      "timestamp": "2025-08-26T00:00:00.000Z",
+      "instruction": "ResellOption",
+      "details": {
+        "seller": "G2eX9ZrE...",
+        "buyer": "CnmedVct...",
+        "price": 2.8,
+        "profit": -0.2,
+        "transferNumber": 4
+      }
+    },
+    {
+      "slot": 318,
+      "type": "settlement",
+      "signature": "settlement_sig_318",
+      "timestamp": "2025-08-28T00:00:00.000Z",
+      "instruction": "SettlementDaily",
+      "details": {
+        "day": 27,
+        "aaplPrice": 238.0,
+        "solPrice": 160.0,
+        "ratio": 1.488,
+        "buyerMargin": 0.9875,
+        "sellerMargin": 1.0125,
+        "buyerChange": -0.003006329,
+        "sellerChange": 0.003006329
+      }
+    },
+    {
+      "slot": 319,
+      "type": "resell",
+      "signature": "resell_sig_319",
+      "timestamp": "2025-08-29T00:00:00.000Z",
+      "instruction": "ResellOption",
+      "details": {
+        "seller": "CnmedVct...",
+        "buyer": "DK1kvyYg...",
+        "price": 3.5,
+        "profit": 0.7,
+        "transferNumber": 5
+      }
+    },
+    {
+      "slot": 322,
+      "type": "settlement",
+      "signature": "settlement_sig_322",
+      "timestamp": "2025-08-31T00:00:00.000Z",
+      "instruction": "SettlementDaily",
+      "details": {
+        "day": 30,
+        "aaplPrice": 240.0,
+        "solPrice": 165.0,
+        "ratio": 1.455,
+        "buyerMargin": 0.954545454,
+        "sellerMargin": 1.045454546,
+        "buyerChange": -0.032954546,
+        "sellerChange": 0.032954546
+      }
+    },
+    {
+      "slot": 323,
+      "type": "exercise",
+      "signature": "exercise_sig_323",
+      "timestamp": "2025-08-31T23:59:59.000Z",
+      "instruction": "ExerciseOption",
+      "details": {
+        "finalOwner": "DK1kvyYg...",
+        "aaplPrice": 240.0,
+        "solPrice": 165.0,
+        "currentRatio": 1.455,
+        "strikeRatio": 1.5,
+        "status": "IN THE MONEY",
+        "finalBuyerMargin": 0.954545454,
+        "finalSellerMargin": 1.045454546
+      }
+    }
+  ],
+  "summary": {
+    "totalTransactions": 14,
+    "initializations": 1,
+    "purchases": 1,
+    "resells": 4,
+    "settlements": 6,
+    "exercises": 1,
+    "totalOwnershipTransfers": 5,
+    "finalStatus": "expired",
+    "ownershipChain": [
+      "Seller (5MDTbGuR...) → Creates contract",
+      "Buyer 1 (GXvnDHZ3...) → Purchases for 2 SOL",
+      "Buyer 2 (Cz8WtKjn...) → Buys for 2.5 SOL",
+      "Buyer 3 (G2eX9ZrE...) → Buys for 3 SOL",
+      "Buyer 4 (CnmedVct...) → Buys for 2.8 SOL",
+      "Buyer 5 (DK1kvyYg...) → Buys for 3.5 SOL (FINAL)"
+    ]
+  }
+}
