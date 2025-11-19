@@ -29,12 +29,14 @@ function CopyableAddress({ address, label }: { address: string; label?: string }
   );
 }
 
+type TransactionStatus = 'confirmed' | 'finalized' | 'failed';
+
 interface Transaction {
   signature: string;
   timestamp: number;
   type: string;
   amount: number;
-  status: 'confirmed' | 'finalized' | 'failed';
+  status: TransactionStatus;
   fee: number;
   blockTime: number;
 }
