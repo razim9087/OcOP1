@@ -4,12 +4,14 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useEffect, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 
+type TransactionStatus = 'confirmed' | 'finalized' | 'failed';
+
 interface Transaction {
   signature: string;
   timestamp: number;
   type: string;
-  amount?: number;
-  status: 'confirmed' | 'finalized' | 'failed';
+  amount: number;
+  status: TransactionStatus;
   fee: number;
   blockTime: number;
 }
@@ -91,15 +93,15 @@ export default function TransactionHistoryPage() {
             signature: sig.signature,
             timestamp: sig.blockTime || Date.now() / 1000,
             type,
-            amount,
-            status: sig.confirmationStatus || 'confirmed',
+            amount: amount || 0,
+            status: (sig.confirmationStatus || 'confirmed') as TransactionStatus,
             fee: (tx.meta?.fee || 0) / 1e9,
             blockTime: sig.blockTime || 0,
           };
         })
       );
       
-      const filtered = txDetails.filter((tx): tx is Transaction => tx !== null);
+      const filtered = txDetails.filter((tx) => tx !== null) as Transaction[];
       setTransactions(filtered);
     } catch (error) {
       console.error('Error fetching transactions:', error);

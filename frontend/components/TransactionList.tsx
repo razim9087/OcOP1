@@ -33,7 +33,7 @@ export default function TransactionList() {
       const txInfos: TransactionInfo[] = signatures.map(sig => ({
         signature: sig.signature,
         slot: sig.slot,
-        timestamp: sig.blockTime,
+        timestamp: sig.blockTime ?? null,
         type: determineTransactionType(sig.memo || ''),
         success: !sig.err,
       }));

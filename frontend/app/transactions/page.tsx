@@ -265,7 +265,7 @@ export default function TransactionHistoryPage() {
             timestamp: sig.blockTime || Date.now() / 1000,
             type,
             amount: amount || 0,
-            status: sig.confirmationStatus || 'confirmed',
+            status: (sig.confirmationStatus || 'confirmed') as TransactionStatus,
             fee: (tx.meta?.fee || 0) / 1e9,
             blockTime: sig.blockTime || 0,
           };
