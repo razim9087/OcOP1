@@ -272,7 +272,7 @@ export default function TransactionHistoryPage() {
         })
       );
       
-      const filtered = txDetails.filter((tx): tx is Transaction => tx !== null);
+      const filtered = txDetails.filter((tx) => tx !== null) as Transaction[];
       setTransactions(filtered);
     } catch (error) {
       console.error('Error fetching transactions:', error);
