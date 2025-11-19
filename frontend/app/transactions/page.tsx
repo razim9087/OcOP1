@@ -33,7 +33,7 @@ interface Transaction {
   signature: string;
   timestamp: number;
   type: string;
-  amount?: number;
+  amount: number;
   status: 'confirmed' | 'finalized' | 'failed';
   fee: number;
   blockTime: number;
@@ -262,7 +262,7 @@ export default function TransactionHistoryPage() {
             signature: sig.signature,
             timestamp: sig.blockTime || Date.now() / 1000,
             type,
-            amount,
+            amount: amount || 0,
             status: sig.confirmationStatus || 'confirmed',
             fee: (tx.meta?.fee || 0) / 1e9,
             blockTime: sig.blockTime || 0,
