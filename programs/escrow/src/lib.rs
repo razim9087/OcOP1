@@ -357,6 +357,7 @@ pub mod escrow {
 
     /// Resell an option to a new buyer
     /// Current owner sells to new buyer at a new price
+    /// Returns margin to previous owner and collects margin from new buyer
     pub fn resell_option(ctx: Context<ResellOption>, resell_price: u64) -> Result<()> {
         let clock = Clock::get()?;
         
@@ -365,6 +366,7 @@ pub mod escrow {
         let owner = ctx.accounts.option.owner;
         let expiry_date = ctx.accounts.option.expiry_date;
         let old_buyer_margin = ctx.accounts.option.buyer_margin;
+        let initial_margin = ctx.accounts.option.initial_margin;
         let is_test = ctx.accounts.option.is_test;
         
         require!(
@@ -387,7 +389,7 @@ pub mod escrow {
         
         require!(resell_price > 0, ErrorCode::PriceMustBeNonZero);
         
-        // Transfer resell price from new buyer to current owner
+        // Step 1: Transfer resell price from new buyer to current owner
         let resell_transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
             &ctx.accounts.new_buyer.key(),
             &ctx.accounts.current_owner.key(),
@@ -402,11 +404,15 @@ pub mod escrow {
             ],
         )?;
         
-        // Transfer new buyer's margin to option account first
+        // Step 2: Return old buyer's margin from option account to previous owner
+        **ctx.accounts.option.to_account_info().try_borrow_mut_lamports()? -= old_buyer_margin;
+        **ctx.accounts.current_owner.to_account_info().try_borrow_mut_lamports()? += old_buyer_margin;
+        
+        // Step 3: Collect new buyer's margin and transfer to option account
         let new_margin_ix = anchor_lang::solana_program::system_instruction::transfer(
             &ctx.accounts.new_buyer.key(),
             &ctx.accounts.option.to_account_info().key(),
-            old_buyer_margin,
+            initial_margin,
         );
         
         anchor_lang::solana_program::program::invoke(
@@ -417,14 +423,13 @@ pub mod escrow {
             ],
         )?;
         
-        // Transfer old buyer's margin from option account to old owner
-        // We need to adjust lamports directly since option account is a PDA
-        **ctx.accounts.option.to_account_info().try_borrow_mut_lamports()? -= old_buyer_margin;
-        **ctx.accounts.current_owner.to_account_info().try_borrow_mut_lamports()? += old_buyer_margin;
-        
-        // Update owner
+        // Step 4: Update option state with new owner and reset buyer margin
         let option = &mut ctx.accounts.option;
         option.owner = ctx.accounts.new_buyer.key();
+        option.buyer_margin = initial_margin;
+        
+        msg!("Option resold: margin {} returned to previous owner, margin {} collected from new buyer",
+             old_buyer_margin, initial_margin);
         
         Ok(())
     }
