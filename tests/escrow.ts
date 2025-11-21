@@ -429,6 +429,171 @@ describe('Options Contract', () => {
         }
     });
 
+    it('Verifies new buyer can afford resell premium and margin', async () => {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const underlying_afford = "AFFORD/USDC";
+        
+        const freshSeller = web3.Keypair.generate();
+        const freshBuyer = web3.Keypair.generate();
+        const newBuyer = web3.Keypair.generate();
+        
+        await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await connection.requestAirdrop(freshBuyer.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        // Give new buyer exactly enough for premium + margin + transaction fees
+        const resellPrice = new anchor.BN(2 * web3.LAMPORTS_PER_SOL);
+        const totalRequired = resellPrice.toNumber() + initialMargin.toNumber() + (0.01 * web3.LAMPORTS_PER_SOL); // Add buffer for fees
+        await connection.requestAirdrop(newBuyer.publicKey, totalRequired);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const [optionPda] = web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("option"), freshSeller.publicKey.toBuffer(), Buffer.from(underlying_afford)],
+            program.programId
+        );
+
+        // Initialize and purchase option
+        await program.methods
+            .initializeOption(
+                CALL_OPTION,
+                underlying_afford,
+                new anchor.BN(currentTime),
+                optionPrice,
+                strikePrice,
+                initialMargin,
+                true,  // is_test mode
+                false  // allow_zero_margin
+            )
+            .accountsPartial({
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshSeller])
+            .rpc();
+
+        await program.methods
+            .purchaseOption()
+            .accountsPartial({
+                option: optionPda,
+                buyer: freshBuyer.publicKey,
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshBuyer, freshSeller])
+            .rpc();
+
+        // Get balances before resell
+        const newBuyerBalanceBefore = await connection.getBalance(newBuyer.publicKey);
+        const originalBuyerBalanceBefore = await connection.getBalance(freshBuyer.publicKey);
+
+        // Resell option - new buyer must pay premium + margin
+        await program.methods
+            .resellOption(resellPrice)
+            .accountsPartial({
+                option: optionPda,
+                currentOwner: freshBuyer.publicKey,
+                newBuyer: newBuyer.publicKey,
+            })
+            .signers([freshBuyer, newBuyer])
+            .rpc();
+
+        // Get balances after resell
+        const newBuyerBalanceAfter = await connection.getBalance(newBuyer.publicKey);
+        const originalBuyerBalanceAfter = await connection.getBalance(freshBuyer.publicKey);
+        const optionAccount = await program.account.optionContract.fetch(optionPda);
+
+        // Verify ownership transfer
+        assert.equal(optionAccount.owner.toString(), newBuyer.publicKey.toString());
+        assert.equal(optionAccount.buyerMargin.toNumber(), initialMargin.toNumber());
+
+        // Verify new buyer paid both premium and margin
+        const newBuyerCost = newBuyerBalanceBefore - newBuyerBalanceAfter;
+        const expectedCost = resellPrice.toNumber() + initialMargin.toNumber();
+        assert.isTrue(
+            newBuyerCost >= expectedCost * 0.99 && newBuyerCost <= expectedCost * 1.01,
+            `New buyer should pay approximately ${expectedCost / web3.LAMPORTS_PER_SOL} SOL (premium + margin), paid ${newBuyerCost / web3.LAMPORTS_PER_SOL} SOL`
+        );
+
+        // Verify original buyer received premium and margin back
+        const originalBuyerGain = originalBuyerBalanceAfter - originalBuyerBalanceBefore;
+        const expectedGain = resellPrice.toNumber() + initialMargin.toNumber();
+        assert.isTrue(
+            originalBuyerGain >= expectedGain * 0.99,
+            `Original buyer should receive approximately ${expectedGain / web3.LAMPORTS_PER_SOL} SOL (premium + margin back), received ${originalBuyerGain / web3.LAMPORTS_PER_SOL} SOL`
+        );
+    });
+
+    it('Fails resell when new buyer cannot afford premium and margin', async () => {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const underlying_poor = "POOR/USDC";
+        
+        const freshSeller = web3.Keypair.generate();
+        const freshBuyer = web3.Keypair.generate();
+        const poorBuyer = web3.Keypair.generate();
+        
+        await connection.requestAirdrop(freshSeller.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        await connection.requestAirdrop(freshBuyer.publicKey, 5 * web3.LAMPORTS_PER_SOL);
+        // Give poor buyer insufficient funds (only enough for premium, not margin)
+        await connection.requestAirdrop(poorBuyer.publicKey, 1.6 * web3.LAMPORTS_PER_SOL);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const [optionPda] = web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("option"), freshSeller.publicKey.toBuffer(), Buffer.from(underlying_poor)],
+            program.programId
+        );
+
+        // Initialize and purchase option with high margin requirement
+        const highMargin = new anchor.BN(1 * web3.LAMPORTS_PER_SOL); // 1 SOL margin
+        await program.methods
+            .initializeOption(
+                PUT_OPTION,
+                underlying_poor,
+                new anchor.BN(currentTime),
+                optionPrice,
+                strikePrice,
+                highMargin,
+                true,  // is_test mode
+                false  // allow_zero_margin
+            )
+            .accountsPartial({
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshSeller])
+            .rpc();
+
+        await program.methods
+            .purchaseOption()
+            .accountsPartial({
+                option: optionPda,
+                buyer: freshBuyer.publicKey,
+                seller: freshSeller.publicKey,
+            })
+            .signers([freshBuyer, freshSeller])
+            .rpc();
+
+        // Try to resell to buyer with insufficient funds (should fail)
+        const resellPrice = new anchor.BN(0.5 * web3.LAMPORTS_PER_SOL); // 0.5 SOL premium
+        // Poor buyer has 1.6 SOL but needs 0.5 (premium) + 1.0 (margin) = 1.5 SOL + fees
+        
+        try {
+            await program.methods
+                .resellOption(resellPrice)
+                .accountsPartial({
+                    option: optionPda,
+                    currentOwner: freshBuyer.publicKey,
+                    newBuyer: poorBuyer.publicKey,
+                })
+                .signers([freshBuyer, poorBuyer])
+                .rpc();
+            
+            assert.fail("Should have thrown error for insufficient funds");
+        } catch (error: any) {
+            // Transaction should fail due to insufficient lamports
+            assert.isTrue(
+                error.toString().includes("insufficient") || 
+                error.toString().includes("failed") ||
+                error.toString().includes("0x1"),
+                `Expected insufficient funds error, got: ${error.toString()}`
+            );
+        }
+    });
+
     it('Rejects purchase attempt on delisted option', async () => {
         const currentTime = Math.floor(Date.now() / 1000);
         const underlying6 = "ADA/USDC";
